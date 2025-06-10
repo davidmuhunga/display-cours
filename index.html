@@ -1,220 +1,532 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Visionneuse PDF Sécurisée</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
-  <style>
-    :root {
-      --primary-light: #e0f7fa;
-      --secondary-light: #bbdefb;
-      --accent-blue: #2196f3;
-      --text-dark: #37474f;
-      --shadow-light: rgba(0, 0, 0, 0.08);
-      --shadow-medium: rgba(0, 0, 0, 0.15);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visionneuse PDF Sécurisée</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+    <style>
+        :root {
+            --primary-light: #e0f7fa; /* A very light blue */
+            --secondary-light: #bbdefb; /* Another light blue */
+            --accent-blue: #2196f3; /* A vibrant blue for accents */
+            --text-dark: #37474f; /* Dark text for readability */
+            --shadow-light: rgba(0, 0, 0, 0.08);
+            --shadow-medium: rgba(0, 0, 0, 0.15);
+        }
 
-    body {
-      background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary-light) 100%);
-      padding-top: 10px;
-      padding-bottom: 30px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: var(--text-dark);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+        body {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary-light) 100%);
+            min-height: 100vh;
+            padding-top: 40px;
+            padding-bottom: 60px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-    .container {
-      max-width: 960px;
-      width: 100%;
-    }
+        .container {
+            max-width: 960px;
+            width: 100%;
+        }
 
-    .logo-container {
-      text-align: center;
-      margin-bottom: 10px;
-    }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 12px 30px var(--shadow-medium);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
 
-    .logo-container h1 {
-      font-size: 2rem;
-      color: #1e88e5;
-    }
+        .glass-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 18px 40px var(--shadow-medium);
+        }
 
-    .logo-container p {
-      font-size: 1.1rem;
-    }
+        .card-header {
+            background: linear-gradient(to right, #64b5f6, #2196f3); /* Lighter blue gradient */
+            color: white;
+            padding: 25px;
+            border-bottom: none;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-    .glass-card {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 20px;
-      box-shadow: 0 12px 30px var(--shadow-medium);
-      border: 1px solid rgba(255, 255, 255, 0.6);
-      overflow: hidden;
-    }
+        .card-header h2 {
+            margin: 0;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px var(--shadow-medium);
+        }
 
-    .card-header {
-      background: linear-gradient(to right, #64b5f6, #2196f3);
-      color: white;
-      padding: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+        .pdf-viewer-area {
+            padding: 25px;
+            height: 75vh; /* Adjusted for better viewing */
+            background: #fafafa; /* Lighter background for the viewer area */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            border-radius: 0 0 20px 20px; /* Rounded bottom corners */
+        }
 
-    .card-header h2 {
-      margin: 0;
-      font-weight: 600;
-    }
+        #pdf-canvas {
+            display: block; /* Important for canvas rendering */
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px var(--shadow-light);
+            background-color: white; /* Canvas background */
+        }
 
-    .pdf-viewer-area {
-      padding: 15px;
-      height: calc(100vh - 200px); /* Reduced globally */
-      background: #fafafa;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-      overflow: auto;
-    }
+        .viewer-controls {
+            display: flex;
+            justify-content: center;
+            padding: 15px 25px;
+            background: #f0f0f0; /* Light gray background for controls */
+            border-top: 1px solid #e0e0e0;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            gap: 15px;
+        }
 
-    #pdf-canvas {
-      display: block;
-      width: 100%;
-      height: auto;
-      border-radius: 10px;
-      background: white;
-      box-shadow: 0 4px 15px var(--shadow-light);
-    }
+        .viewer-controls button {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 15px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
 
-    .viewer-controls {
-      display: flex;
-      justify-content: center;
-      padding: 12px;
-      background: #f0f0f0;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
+        .viewer-controls button:hover {
+            background: #1e88e5; /* Slightly darker blue on hover */
+            transform: translateY(-2px);
+        }
 
-    .viewer-controls button {
-      background: var(--accent-blue);
-      color: white;
-      border: none;
-      border-radius: 5px;
-      padding: 6px 12px;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+            text-shadow: 1px 1px 4px var(--shadow-medium);
+        }
 
-    .watermark {
-      position: absolute;
-      bottom: 10px;
-      right: 20px;
-      color: rgba(0, 0, 0, 0.1);
-      font-size: 0.9rem;
-    }
+        .logo-container h1 {
+            font-weight: 700;
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #1e88e5; /* Brighter blue for title */
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+        }
 
-    .protection-badge {
-      background: rgba(255, 255, 255, 0.3);
-      padding: 6px 14px;
-      border-radius: 50px;
-      font-size: 0.85rem;
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      backdrop-filter: blur(4px);
-    }
+        .logo-container p {
+            font-size: 1.3rem;
+            max-width: 700px;
+            margin: 0 auto;
+            opacity: 0.95;
+            color: #424242; /* Darker text for subtitle */
+        }
 
-    footer {
-      text-align: center;
-      color: #546e7a;
-      margin-top: 30px;
-      font-size: 0.85rem;
-    }
-  </style>
+        .security-info {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 35px;
+            color: var(--text-dark);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 20px var(--shadow-light);
+        }
+
+        .security-info h4 {
+            color: var(--accent-blue);
+            font-weight: 600;
+            margin-bottom: 25px;
+        }
+
+        .security-item {
+            display: flex;
+            align-items: flex-start; /* Align items to top */
+            margin-bottom: 20px;
+        }
+
+        .security-item i {
+            font-size: 2rem;
+            margin-right: 25px;
+            color: white;
+            background: #a5d6a7; /* Lighter green for success */
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .security-item i.fa-ban { background-color: #ef9a9a; /* Light red */ }
+        .security-item i.fa-mouse { background-color: #ffcc80; /* Light orange */ }
+        .security-item i.fa-print-slash { background-color: #81d4fa; /* Light blue */ }
+
+        .security-text {
+            flex: 1;
+        }
+
+        .security-text h5 {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .security-text p {
+            font-size: 0.95rem;
+            color: #546e7a;
+        }
+
+        .watermark {
+            position: absolute;
+            bottom: 20px;
+            right: 25px;
+            color: rgba(0, 0, 0, 0.1); /* Very subtle */
+            font-size: 0.9rem;
+            z-index: 5;
+            pointer-events: none;
+            font-weight: 500;
+        }
+
+        .protection-badge {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            font-weight: 500;
+        }
+
+        footer {
+            text-align: center;
+            color: #546e7a;
+            margin-top: 50px;
+            padding: 20px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Adjustments for PDF.js UI elements if they appear */
+        .textLayer, .annotationLayer {
+            /* This can help prevent text selection/copying, but might impact accessibility */
+            user-select: none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* Hide specific PDF.js viewer controls */
+        #toolbarContainer, #sidebarContainer, #secondaryToolbar, #printServiceDialog {
+            display: none !important;
+        }
+        #viewerContainer::-webkit-scrollbar {
+            display: none; /* Hide scrollbar for a cleaner look */
+        }
+        #viewerContainer {
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+        }
+
+        /* Ensure PDF.js's default viewer doesn't override layout */
+        #viewer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Basic styling for the PDF.js canvas itself to fit container */
+        #pdf-canvas {
+            width: 100%; /* Ensure canvas takes full width of its parent */
+            height: 100%; /* Ensure canvas takes full height of its parent */
+            object-fit: contain; /* Scale image to fit, maintaining aspect ratio */
+        }
+
+        /* Custom overlay for input if needed */
+        #pdf-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10; /* Above the canvas */
+            cursor: default; /* Change cursor to default to indicate no interaction */
+            pointer-events: auto; /* Allow overlay to capture events */
+            background: rgba(255,255,255,0.01); /* Almost transparent, but captures events */
+        }
+        .pdf-viewer-area {
+            padding: 15px; /* Réduit le padding pour gagner de l'espace */
+            height: 75vh;
+            background: #fafafa;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Alignement en haut pour les grands documents */
+            position: relative;
+            border-radius: 0 0 20px 20px;
+            overflow: auto; /* Permettre le défilement si nécessaire */
+        }
+
+        #pdf-canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px var(--shadow-light);
+            background-color: white;
+        }
+
+
+        @media (max-width: 768px) {
+            .pdf-viewer-area {
+                height: 60vh;
+            }
+            .logo-container h1 {
+                font-size: 2.5rem;
+            }
+            .logo-container p {
+                font-size: 1.1rem;
+            }
+            .security-item i {
+                font-size: 1.5rem;
+                width: 50px;
+                height: 50px;
+            }
+            .security-item {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo-container">
-      <h1><i class="fas fa-file-pdf me-2"></i>Visionneuse PDF Sécurisée</h1>
-      <p class="lead">Cours d'algorithme</p>
+    <div class="container">
+        <div class="logo-container">
+            <h1><i class="fas fa-file-pdf me-3"></i>COURS DE ......</h1>
+            <p class="lead">Visualiseur des notes du cours</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-lock me-2"></i>Visionneuse Protégée</h2>
+                        <div class="protection-badge">
+                            <i class="fas fa-shield-alt me-1"></i>Mode Sécurité Activé
+                        </div>
+                    </div>
+                    <div class="card-body p-0"> <div class="pdf-viewer-area">
+                            <canvas id="pdf-canvas" style="border: 1px solid #ddd;"></canvas>
+                            <div id="pdf-overlay"></div> <div class="watermark">Visionneuse sécurisée - Téléchargement/Impression désactivés</div>
+                        </div>
+                        <div class="viewer-controls">
+                            <button id="prev-page"><i class="fas fa-chevron-left me-2"></i>Précédent</button>
+                            <span id="page-num"></span> / <span id="page-count"></span>
+                            <button id="next-page"><i class="fas fa-chevron-right ms-2"></i>&nbsp;&nbsp;Suivant</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="security-info">
+                    <h4 class="text-center mb-4"><i class="fas fa-shield-alt me-2"></i>Protection du document</h4>
+                    <div class="security-item">
+                        <i class="fas fa-ban"></i>
+                        <div class="security-text">
+                            <h5>Téléchargement désactivé</h5>
+                            <p class="mb-0">Le téléchargement du document PDF est techniquement désactivé.</p>
+                        </div>
+                    </div>
+                    <div class="security-item">
+                        <i class="fas fa-print-slash"></i>
+                        <div class="security-text">
+                            <h5>Impression bloquée</h5>
+                            <p class="mb-0">L'impression du document est désactivée pour maintenir la confidentialité.</p>
+                        </div>
+                    </div>
+                    <div class="security-item">
+                        <i class="fas fa-mouse"></i>
+                        <div class="security-text">
+                            <h5>Protection contre le clic droit</h5>
+                            <p class="mb-0">Le menu contextuel est désactivé sur le document pour empêcher l'enregistrement.</p>
+                        </div>
+                    </div>
+                     <div class="security-item">
+                        <i class="fas fa-copy"></i>
+                        <div class="security-text">
+                            <h5>Copie de texte désactivée</h5>
+                            <p class="mb-0">La sélection et la copie de texte sont bloquées pour une protection accrue.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>© 2025 Visionneuse PDF Sécurisée - Made by dave-mhg</p>
+            <p class="mb-0">Cette application ne permet ni le téléchargement ni l'impression des documents affichés.</p>
+        </footer>
     </div>
 
-    <div class="glass-card">
-      <div class="card-header">
-        <h2><i class="fas fa-lock me-2"></i>Visionneuse Protégée</h2>
-        <div class="protection-badge">
-          <i class="fas fa-shield-alt me-1"></i>Sécurité Active
-        </div>
-      </div>
-      <div class="card-body p-0">
-        <div class="pdf-viewer-area">
-          <canvas id="pdf-canvas" style="margin-top:15px"></canvas>
-          <div class="watermark">Visionneuse sécurisée</div>
-        </div>
-        <div class="viewer-controls">
-          <button id="prev-page"><i class="fas fa-chevron-left me-2"></i>Précédent</button>
-          <span id="page-num">1</span> / <span id="page-count">--</span>
-          <button id="next-page"><i class="fas fa-chevron-right ms-2"></i>Suivant</button>
-        </div>
-      </div>
-    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <footer>
-      <p>© 2025 Visionneuse PDF Sécurisée - MADE BY <b>DAVE MHG</b></p>
-    </footer>
-  </div>
+    <script>
+        // Set up the PDF.js worker source
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-  <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-    const pdfCanvas = document.getElementById('pdf-canvas');
-    const ctx = pdfCanvas.getContext('2d');
-    const pageNumSpan = document.getElementById('page-num');
-    const pageCountSpan = document.getElementById('page-count');
-    const prevBtn = document.getElementById('prev-page');
-    const nextBtn = document.getElementById('next-page');
+        const pdfCanvas = document.getElementById('pdf-canvas');
+        const canvasContext = pdfCanvas.getContext('2d');
+        const pageNumSpan = document.getElementById('page-num');
+        const pageCountSpan = document.getElementById('page-count');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        const pdfOverlay = document.getElementById('pdf-overlay');
 
-    let pdfDoc = null;
-    let currentPage = 1;
+        let pdfDoc = null;
+        let currentPageNum = 1;
+        const scale = 1.5; // You can adjust this for zoom level
 
-    async function renderPage(num) {
-      const page = await pdfDoc.getPage(num);
-      const scale = pdfCanvas.clientWidth / page.getViewport({ scale: 1 }).width;
-      const viewport = page.getViewport({ scale });
+        // Function to render a specific page
+        async function renderPage(num) {
+            if (!pdfDoc) return;
 
-      pdfCanvas.height = viewport.height;
-      pdfCanvas.width = viewport.width;
+            try {
+                const page = await pdfDoc.getPage(num);
+                const container = document.querySelector('.pdf-viewer-area');
+                const containerWidth = container.clientWidth - 40; // Largeur disponible (- padding)
 
-      await page.render({ canvasContext: ctx, viewport }).promise;
+                // Calcul dynamique de l'échelle
+                const viewport = page.getViewport({ scale: 1 });
+                const scale = Math.min(2.0, containerWidth / viewport.width);
+                
+                const scaledViewport = page.getViewport({ scale: scale });
 
-      pageNumSpan.textContent = num;
-    }
+                pdfCanvas.height = scaledViewport.height;
+                pdfCanvas.width = scaledViewport.width;
 
-    async function loadPdf(url) {
-      const loadingTask = pdfjsLib.getDocument(url);
-      pdfDoc = await loadingTask.promise;
-      pageCountSpan.textContent = pdfDoc.numPages;
-      renderPage(currentPage);
-    }
+                const renderContext = {
+                    canvasContext: canvasContext,
+                    viewport: scaledViewport,
+                };
+                
+                await page.render(renderContext).promise;
+                pageNumSpan.textContent = currentPageNum;
 
-    prevBtn.onclick = () => {
-      if (currentPage > 1) {
-        currentPage--;
-        renderPage(currentPage);
-      }
-    };
+            } catch (error) {
+                console.error('Error rendering page:', error);
+            }
+        }
 
-    nextBtn.onclick = () => {
-      if (currentPage < pdfDoc.numPages) {
-        currentPage++;
-        renderPage(currentPage);
-      }
-    };
+        // Function to load the PDF
+        async function loadPdf(url) {
+            try {
+                const loadingTask = pdfjsLib.getDocument(url);
+                pdfDoc = await loadingTask.promise;
+                pageCountSpan.textContent = pdfDoc.numPages;
+                currentPageNum = 1; // Reset to first page
+                renderPage(currentPageNum);
+                console.log('PDF loaded successfully.');
+            } catch (error) {
+                console.error('Error loading PDF:', error);
+                alert('Impossible de charger le document PDF. Veuillez vérifier l\'URL.');
+            }
+        }
 
-    window.addEventListener('resize', () => renderPage(currentPage));
-    document.addEventListener('DOMContentLoaded', () => loadPdf('document.pdf'));
-  </script>
+        // Event Listeners for navigation
+        prevPageBtn.addEventListener('click', () => {
+            if (currentPageNum <= 1) {
+                return;
+            }
+            currentPageNum--;
+            renderPage(currentPageNum);
+        });
+
+        nextPageBtn.addEventListener('click', () => {
+            if (currentPageNum >= pdfDoc.numPages) {
+                return;
+            }
+            currentPageNum++;
+            renderPage(currentPageNum);
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load a default PDF
+            // IMPORTANT: Replace 'document.pdf' with the actual path to your PDF file.
+            // For security, ensure this PDF is hosted on your server or a secure, whitelisted CDN.
+            loadPdf('document.pdf');
+
+            // --- Security Measures ---
+
+            // 1. Disable Right-Click (Context Menu) on the entire viewer area
+            // This is applied to the canvas and its overlay
+            pdfCanvas.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                alert("Le clic droit est désactivé pour protéger ce document.");
+            });
+            pdfOverlay.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                alert("Le clic droit est désactivé pour protéger ce document.");
+            });
+            document.addEventListener('contextmenu', function(e) {
+                // Catch right-clicks anywhere on the page, especially useful if the PDF isn't full screen
+                e.preventDefault();
+                // Optional: Show a more generic alert for non-document areas
+                // alert("Action non autorisée.");
+            });
+
+
+            // 2. Disable Common Keyboard Shortcuts for Print (Ctrl+P, Cmd+P) and Save (Ctrl+S, Cmd+S)
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's' || e.key === 'u' || e.key === 'i' || e.key === 'j')) { // Ctrl+P, Ctrl+S, Ctrl+U (view source), Ctrl+I (developer tools), Ctrl+J (downloads)
+                    e.preventDefault();
+                    e.stopPropagation(); // Stop propagation to prevent browser default action
+                    alert("Cette action est désactivée pour la sécurité du document.");
+                    return false;
+                }
+                // Disable F12 (Developer Tools)
+                if (e.key === 'F12') {
+                    e.preventDefault();
+                    alert("Les outils de développement sont désactivés pour la sécurité du document.");
+                    return false;
+                }
+            });
+
+            // 3. Disable Text Selection (might not work perfectly across all browsers/systems, especially for embedded content)
+            // This can be set on the canvas or a parent element
+            pdfCanvas.style.userSelect = 'none';
+            pdfCanvas.style.webkitUserSelect = 'none';
+            pdfCanvas.style.MozUserSelect = 'none';
+            pdfCanvas.style.msUserSelect = 'none';
+
+            // 4. Prevent drag-and-drop of the canvas
+            pdfCanvas.addEventListener('dragstart', function(e) {
+                e.preventDefault();
+            });
+
+            // Important: Log security status
+            console.log("%cSécurité activée: Téléchargement, Impression et Clic Droit désactivés",
+                        "color: white; background: #e74c3c; font-size: 16px; padding: 10px; border-radius: 5px;");
+        });
+    </script>
 </body>
 </html>

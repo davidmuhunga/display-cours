@@ -68,7 +68,8 @@
 
         .pdf-viewer-area {
             padding: 25px;
-            height: 85vh; /* Ajusté pour une meilleure visualisation */
+            /* Hauteur dynamique pour s'adapter à l'écran, en laissant de la place pour le header et le footer */
+            height: calc(100vh - 250px); /* Ajusté pour une meilleure visualisation sur différents écrans */
             background: #fafafa; /* Arrière-plan plus clair pour la zone du visualiseur */
             display: flex;
             justify-content: center;
@@ -263,7 +264,6 @@
         }
 
         /* Style de base pour le canevas PDF.js lui-même pour s'adapter au conteneur */
-        /* Retiré object-fit: contain pour permettre un remplissage plus complet */
         #pdf-canvas {
             display: block;
             width: 100%; /* Prendra 100% de la largeur de son parent */
@@ -289,21 +289,51 @@
 
         @media (max-width: 768px) {
             .pdf-viewer-area {
-                height: 60vh;
+                /* Sur les petits écrans, réajuster la hauteur pour qu'elle soit plus petite */
+                /* Les 220px sont une estimation de la hauteur combinée du logo-container, card-header et padding/margins environnants */
+                height: calc(100vh - 220px);
+            }
+            .logo-container {
+                margin-bottom: 20px; /* Réduire l'espace en dessous du logo */
             }
             .logo-container h1 {
-                font-size: 2.5rem;
+                font-size: 2rem;
             }
             .logo-container p {
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
             .security-item i {
                 font-size: 1.5rem;
-                width: 50px;
-                height: 50px;
+                width: 45px;
+                height: 45px;
+                margin-right: 15px;
             }
-            .security-item {
-                margin-bottom: 15px;
+            .security-text h5 {
+                font-size: 1rem;
+            }
+            .security-text p {
+                font-size: 0.85rem;
+            }
+            .viewer-controls button {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+            .viewer-controls {
+                padding: 10px 15px;
+                gap: 10px;
+            }
+        }
+
+        /* Ajustements pour les écrans très petits, comme les mobiles en mode paysage */
+        @media (max-width: 480px) {
+            .pdf-viewer-area {
+                height: calc(100vh - 180px); /* Encore plus d'ajustement pour très petits écrans */
+            }
+            .logo-container h1 {
+                font-size: 1.8rem;
+            }
+            .logo-container p {
+                font-size: 0.9rem;
             }
         }
     </style>
@@ -316,7 +346,8 @@
         </div>
 
         <div class="row justify-content-center">
-            <div class="col-lg-12"> <div class="glass-card">
+            <div class="col-lg-12">
+                <div class="glass-card">
                     <div class="card-header">
                         <h2><i class="fas fa-lock me-2"></i>Visionneuse Protégée</h2>
                         <div class="protection-badge">
@@ -330,11 +361,9 @@
                             <div class="watermark">Visionneuse sécurisée - Téléchargement/Impression désactivés</div>
                         </div>
                         <div class="viewer-controls">
-                            <button id="zoom-out"><i class="fas fa-search-minus me-2"></i>Zoom Moins</button>
                             <button id="prev-page"><i class="fas fa-chevron-left me-2"></i>Précédent</button>
                             <span id="page-num"></span> / <span id="page-count"></span>
-                            <button id="next-page"><i class="fas fa-chevron-right ms-2"></i>&nbsp;&nbsp;Suivant</button>
-                            <button id="zoom-in"><i class="fas fa-search-plus ms-2"></i>&nbsp;&nbsp;Zoom Plus</button>
+                            <button id="next-page"><i class="fas fa-chevron-right ms-2"></i>Suivant</button>
                         </div>
                     </div>
                 </div>
@@ -391,19 +420,15 @@
         const pageCountSpan = document.getElementById('page-count');
         const prevPageBtn = document.getElementById('prev-page');
         const nextPageBtn = document.getElementById('next-page');
-        const zoomInBtn = document.getElementById('zoom-in');
-        const zoomOutBtn = document.getElementById('zoom-out');
+        // Supprimés: zoomInBtn, zoomOutBtn
         const pdfOverlay = document.getElementById('pdf-overlay');
 
         let pdfDoc = null;
         let currentPageNum = 1;
-        let currentScale = 1.0; // Échelle actuelle du document
-        const ZOOM_STEP = 0.2;
-        const MIN_SCALE = 0.5;
-        const MAX_SCALE = 3.0;
+        // La variable currentScale n'est plus modifiable par l'utilisateur, mais nécessaire pour le rendu initial
+        let currentScale = 1.0;
 
-        // Cette variable permettra de stocker l'échelle calculée pour l'ajustement initial
-        // et de s'assurer que le zoom manuel part de cette base.
+        // Cette variable stockera l'échelle calculée pour l'ajustement initial
         let initialFitScale = null;
 
         // Fonction pour rendre une page spécifique
@@ -413,18 +438,16 @@
             try {
                 const page = await pdfDoc.getPage(num);
 
-                // Obtenez les dimensions réelles de la zone du canevas
+                // Obtenez les dimensions réelles de la zone où le canevas est affiché
                 const viewerWidth = pdfCanvas.clientWidth;
 
-                // Si c'est le premier rendu ou après un rechargement complet,
-                // nous calculons le zoom initial pour "remplir" la largeur.
-                if (initialFitScale === null) {
-                    const viewportDefault = page.getViewport({ scale: 1.0 });
-                    initialFitScale = viewerWidth / viewportDefault.width;
-                    currentScale = initialFitScale; // Définir l'échelle actuelle sur l'échelle d'ajustement initial
-                }
+                // Calculez toujours l'échelle pour s'adapter à la largeur disponible,
+                // car il n'y a plus de zoom manuel.
+                const viewportDefault = page.getViewport({ scale: 1.0 });
+                initialFitScale = viewerWidth / viewportDefault.width;
 
-                const viewport = page.getViewport({ scale: currentScale });
+                // Appliquez l'échelle calculée
+                const viewport = page.getViewport({ scale: initialFitScale });
 
                 // Mettez à jour la taille du canevas pour correspondre à la taille du viewport mis à l'échelle
                 pdfCanvas.height = viewport.height;
@@ -437,7 +460,7 @@
                 await page.render(renderContext).promise;
 
                 pageNumSpan.textContent = currentPageNum;
-                console.log(`Page ${num} rendue. Zoom actuel: ${currentScale.toFixed(2)}`);
+                console.log(`Page ${num} rendue. Échelle d'ajustement: ${initialFitScale.toFixed(2)}`);
             } catch (error) {
                 console.error('Erreur lors du rendu de la page :', error);
             }
@@ -450,7 +473,7 @@
                 pdfDoc = await loadingTask.promise;
                 pageCountSpan.textContent = pdfDoc.numPages;
                 currentPageNum = 1; // Réinitialiser à la première page
-                initialFitScale = null; // Réinitialiser pour recalculer l'ajustement au premier rendu
+                initialFitScale = null; // Force le recalcul de l'ajustement lors du premier rendu
                 renderPage(currentPageNum);
                 console.log('PDF chargé avec succès.');
             } catch (error) {
@@ -476,27 +499,7 @@
             renderPage(currentPageNum);
         });
 
-        // Écouteur d'événement pour le zoom avant
-        zoomInBtn.addEventListener('click', () => {
-            if (currentScale < MAX_SCALE) {
-                currentScale = Math.min(MAX_SCALE, currentScale + ZOOM_STEP);
-                renderPage(currentPageNum);
-                console.log(`Zoom augmenté à: ${currentScale.toFixed(2)}`);
-            } else {
-                alert("Zoom maximum atteint.");
-            }
-        });
-
-        // Écouteur d'événement pour le zoom arrière
-        zoomOutBtn.addEventListener('click', () => {
-            if (currentScale > MIN_SCALE) {
-                currentScale = Math.max(MIN_SCALE, currentScale - ZOOM_STEP);
-                renderPage(currentPageNum);
-                console.log(`Zoom diminué à: ${currentScale.toFixed(2)}`);
-            } else {
-                alert("Zoom minimum atteint.");
-            }
-        });
+        // Les écouteurs pour zoomInBtn et zoomOutBtn ont été supprimés
 
         document.addEventListener('DOMContentLoaded', function() {
             // Chargez votre fichier PDF par défaut
@@ -547,8 +550,7 @@
                         "color: white; background: #e74c3c; font-size: 16px; padding: 10px; border-radius: 5px;");
         });
 
-        // Optionnel : Réajuster la page en cas de redimensionnement de la fenêtre
-        // Cela garantit que le PDF s'adapte toujours à la largeur
+        // Réajuster la page en cas de redimensionnement de la fenêtre
         window.addEventListener('resize', () => {
             if (pdfDoc) {
                 initialFitScale = null; // Force le recalcul de l'ajustement

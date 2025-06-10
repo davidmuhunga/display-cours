@@ -75,12 +75,13 @@
             align-items: center;
             position: relative;
             border-radius: 0 0 20px 20px; /* Coins inférieurs arrondis */
+            overflow: auto; /* Permet le défilement si le contenu dépasse */
         }
 
         #pdf-canvas {
             display: block; /* Important pour le rendu du canevas */
-            max-width: 100%;
-            height: auto;
+            width: 100%; /* S'ajuste à la largeur du parent */
+            height: auto; /* Maintient le ratio d'aspect */
             border-radius: 12px;
             box-shadow: 0 4px 15px var(--shadow-light);
             background-color: white; /* Arrière-plan du canevas */
@@ -95,6 +96,7 @@
             border-bottom-left-radius: 20px;
             border-bottom-right-radius: 20px;
             gap: 15px;
+            flex-wrap: wrap; /* Permet aux boutons de passer à la ligne sur petits écrans */
         }
 
         .viewer-controls button {
@@ -261,11 +263,16 @@
         }
 
         /* Style de base pour le canevas PDF.js lui-même pour s'adapter au conteneur */
+        /* Retiré object-fit: contain pour permettre un remplissage plus complet */
         #pdf-canvas {
-            width: 100%; /* Assurer que le canevas prend toute la largeur de son parent */
-            height: 100%; /* Assurer que le canevas prend toute la hauteur de son parent */
-            object-fit: contain; /* Redimensionner l'image pour s'adapter, en conservant le rapport d'aspect */
+            display: block;
+            width: 100%; /* Prendra 100% de la largeur de son parent */
+            height: auto; /* Maintient le ratio d'aspect, mais peut créer un défilement vertical si nécessaire */
+            border-radius: 12px;
+            box-shadow: 0 4px 15px var(--shadow-light);
+            background-color: white;
         }
+
 
         /* Superposition personnalisée pour capturer les événements */
         #pdf-overlay {
@@ -305,7 +312,7 @@
     <div class="container">
         <div class="logo-container">
             <h1><i class="fas fa-file-pdf me-3"></i>Visionneuse PDF Sécurisée</h1>
-            <p class="lead">Visualisez le cours sans possibilité de téléchargement, d'impression ou de copie</p>
+            <p class="lead">Cours d'algorithme</p>
         </div>
 
         <div class="row justify-content-center">
@@ -323,9 +330,11 @@
                             <div class="watermark">Visionneuse sécurisée - Téléchargement/Impression désactivés</div>
                         </div>
                         <div class="viewer-controls">
+                            <button id="zoom-out"><i class="fas fa-search-minus me-2"></i>Zoom Moins</button>
                             <button id="prev-page"><i class="fas fa-chevron-left me-2"></i>Précédent</button>
                             <span id="page-num"></span> / <span id="page-count"></span>
-                            <button id="next-page"><i class="fas fa-chevron-right ms-2"></i>Suivant</button>
+                            <button id="next-page"><i class="fas fa-chevron-right ms-2"></i>&nbsp;&nbsp;Suivant</button>
+                            <button id="zoom-in"><i class="fas fa-search-plus ms-2"></i>&nbsp;&nbsp;Zoom Plus</button>
                         </div>
                     </div>
                 </div>
@@ -365,7 +374,7 @@
         </div>
 
         <footer>
-            <p>© 2025 Visionneuse PDF Sécurisée | <b>Made by DAVE MHG</b></p>
+            <p>© 2025 Visionneuse PDF Sécurisée - MADE BY <b>DAVE MHG</b></p>
             <p class="mb-0">Cette application ne permet ni le téléchargement ni l'impression des documents affichés.</p>
         </footer>
     </div>
@@ -382,11 +391,20 @@
         const pageCountSpan = document.getElementById('page-count');
         const prevPageBtn = document.getElementById('prev-page');
         const nextPageBtn = document.getElementById('next-page');
+        const zoomInBtn = document.getElementById('zoom-in');
+        const zoomOutBtn = document.getElementById('zoom-out');
         const pdfOverlay = document.getElementById('pdf-overlay');
 
         let pdfDoc = null;
         let currentPageNum = 1;
-        const scale = 1.5; // Ajustez cela pour le niveau de zoom
+        let currentScale = 1.0; // Échelle actuelle du document
+        const ZOOM_STEP = 0.2;
+        const MIN_SCALE = 0.5;
+        const MAX_SCALE = 3.0;
+
+        // Cette variable permettra de stocker l'échelle calculée pour l'ajustement initial
+        // et de s'assurer que le zoom manuel part de cette base.
+        let initialFitScale = null;
 
         // Fonction pour rendre une page spécifique
         async function renderPage(num) {
@@ -394,9 +412,21 @@
 
             try {
                 const page = await pdfDoc.getPage(num);
-                const viewport = page.getViewport({ scale: scale });
 
-                // Ajuster la taille du canevas pour correspondre au viewport
+                // Obtenez les dimensions réelles de la zone du canevas
+                const viewerWidth = pdfCanvas.clientWidth;
+
+                // Si c'est le premier rendu ou après un rechargement complet,
+                // nous calculons le zoom initial pour "remplir" la largeur.
+                if (initialFitScale === null) {
+                    const viewportDefault = page.getViewport({ scale: 1.0 });
+                    initialFitScale = viewerWidth / viewportDefault.width;
+                    currentScale = initialFitScale; // Définir l'échelle actuelle sur l'échelle d'ajustement initial
+                }
+
+                const viewport = page.getViewport({ scale: currentScale });
+
+                // Mettez à jour la taille du canevas pour correspondre à la taille du viewport mis à l'échelle
                 pdfCanvas.height = viewport.height;
                 pdfCanvas.width = viewport.width;
 
@@ -407,7 +437,7 @@
                 await page.render(renderContext).promise;
 
                 pageNumSpan.textContent = currentPageNum;
-                console.log(`Page ${num} rendue.`);
+                console.log(`Page ${num} rendue. Zoom actuel: ${currentScale.toFixed(2)}`);
             } catch (error) {
                 console.error('Erreur lors du rendu de la page :', error);
             }
@@ -420,6 +450,7 @@
                 pdfDoc = await loadingTask.promise;
                 pageCountSpan.textContent = pdfDoc.numPages;
                 currentPageNum = 1; // Réinitialiser à la première page
+                initialFitScale = null; // Réinitialiser pour recalculer l'ajustement au premier rendu
                 renderPage(currentPageNum);
                 console.log('PDF chargé avec succès.');
             } catch (error) {
@@ -445,16 +476,35 @@
             renderPage(currentPageNum);
         });
 
+        // Écouteur d'événement pour le zoom avant
+        zoomInBtn.addEventListener('click', () => {
+            if (currentScale < MAX_SCALE) {
+                currentScale = Math.min(MAX_SCALE, currentScale + ZOOM_STEP);
+                renderPage(currentPageNum);
+                console.log(`Zoom augmenté à: ${currentScale.toFixed(2)}`);
+            } else {
+                alert("Zoom maximum atteint.");
+            }
+        });
+
+        // Écouteur d'événement pour le zoom arrière
+        zoomOutBtn.addEventListener('click', () => {
+            if (currentScale > MIN_SCALE) {
+                currentScale = Math.max(MIN_SCALE, currentScale - ZOOM_STEP);
+                renderPage(currentPageNum);
+                console.log(`Zoom diminué à: ${currentScale.toFixed(2)}`);
+            } else {
+                alert("Zoom minimum atteint.");
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             // Chargez votre fichier PDF par défaut
-            // IMPORTANT : Assurez-vous que 'document.pdf' est dans le même répertoire que votre fichier HTML
-            // ou spécifiez le chemin correct (par exemple, 'pdfs/document.pdf' ou '/document.pdf').
             loadPdf('document.pdf'); // Votre fichier PDF est dans le même répertoire que index.html
 
             // --- Mesures de Sécurité ---
 
             // 1. Désactiver le Clic Droit (Menu Contextuel) sur toute la zone du visualiseur
-            // Appliqué au canevas et à sa superposition
             pdfCanvas.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 alert("Le clic droit est désactivé pour protéger ce document.");
@@ -463,24 +513,18 @@
                 e.preventDefault();
                 alert("Le clic droit est désactivé pour protéger ce document.");
             });
-            // Pour capturer les clics droits n'importe où sur la page
             document.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
             });
 
-
-            // 2. Désactiver les raccourcis clavier courants pour l'impression (Ctrl+P, Cmd+P) et la sauvegarde (Ctrl+S, Cmd+S)
+            // 2. Désactiver les raccourcis clavier courants
             document.addEventListener('keydown', function(e) {
                 if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's' || e.key === 'u' || e.key === 'i' || e.key === 'j' || e.key === 'f')) {
-                    // Ctrl+P (Imprimer), Ctrl+S (Sauvegarder), Ctrl+U (Voir la source),
-                    // Ctrl+I (Outils de développement/Infos page), Ctrl+J (Téléchargements),
-                    // Ctrl+F (Rechercher - souvent utilisé pour contourner)
                     e.preventDefault();
-                    e.stopPropagation(); // Arrêter la propagation pour empêcher l'action par défaut du navigateur
+                    e.stopPropagation();
                     alert("Cette action est désactivée pour la sécurité du document.");
                     return false;
                 }
-                // Désactiver F12 (Outils de développement)
                 if (e.key === 'F12') {
                     e.preventDefault();
                     alert("Les outils de développement sont désactivés pour la sécurité du document.");
@@ -488,7 +532,7 @@
                 }
             });
 
-            // 3. Désactiver la sélection de texte (peut ne pas fonctionner parfaitement sur tous les navigateurs/systèmes)
+            // 3. Désactiver la sélection de texte
             pdfCanvas.style.userSelect = 'none';
             pdfCanvas.style.webkitUserSelect = 'none';
             pdfCanvas.style.MozUserSelect = 'none';
@@ -499,9 +543,17 @@
                 e.preventDefault();
             });
 
-            // Important : Afficher le statut de sécurité dans la console
             console.log("%cSécurité activée: Téléchargement, Impression et Clic Droit désactivés",
                         "color: white; background: #e74c3c; font-size: 16px; padding: 10px; border-radius: 5px;");
+        });
+
+        // Optionnel : Réajuster la page en cas de redimensionnement de la fenêtre
+        // Cela garantit que le PDF s'adapte toujours à la largeur
+        window.addEventListener('resize', () => {
+            if (pdfDoc) {
+                initialFitScale = null; // Force le recalcul de l'ajustement
+                renderPage(currentPageNum);
+            }
         });
     </script>
 </body>
